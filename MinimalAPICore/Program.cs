@@ -20,6 +20,13 @@ builder.Services.AddIdentityEntityFrameworkContextConfiguration(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"),
     b => b.MigrationsAssembly("MinimalAPICore")));
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ExcluirFonecedor",
+        policy => policy.RequireClaim("ExcluirFonecedor"
+        ));
+});
+
 builder.Services.AddIdentityConfiguration();
 builder.Services.AddJwtConfiguration(builder.Configuration, "AppSettings");
 
@@ -40,7 +47,7 @@ app.UseHttpsRedirection();
 
 
 
-app.MapPost("/register", async (
+app.MapPost("/register", [AllowAnonymous] async (
       SignInManager<IdentityUser> signInManager,
       UserManager<IdentityUser> userManager,
       IOptions<AppJwtSettings> appJwtSettings,
@@ -118,13 +125,13 @@ app.MapPost("/login", [AllowAnonymous] async (
   .WithName("LoginUsuario")
   .WithTags("Usuario");
 
-app.MapGet("/supplier", async (
+app.MapGet("/supplier", [AllowAnonymous] async (
     MinimalContextDb context) =>
     await context.Suppliers.ToListAsync()
 ).WithName("GetFornecedor")
 .WithTags("Fornecedor");
 
-app.MapGet("/supplier/{id}", async (
+app.MapGet("/supplier/{id}", [AllowAnonymous] async (
     Guid id,
     MinimalContextDb context) =>
     await context.Suppliers.FindAsync(id)
@@ -136,7 +143,7 @@ app.MapGet("/supplier/{id}", async (
 .WithName("GetFornecedorPorId")
 .WithTags("Fornecedor");
 
-app.MapPost("/supplier",  async (
+app.MapPost("/supplier", [Authorize] async (
       MinimalContextDb context,
       Supplier fornecedor) =>
 {
@@ -157,13 +164,13 @@ app.MapPost("/supplier",  async (
   .WithName("PostFornecedor")
   .WithTags("Fornecedor");
 
-app.MapPut("/supplier/{id}", async (
+app.MapPut("/supplier/{id}", [Authorize] async (
        Guid id,
        MinimalContextDb context,
        Supplier supplier) =>
 {
     var supplierExists = await context.Suppliers.AsNoTracking<Supplier>()
-            .FirstOrDefaultAsync(s=>s.Id == id);
+            .FirstOrDefaultAsync(s => s.Id == id);
     if (supplierExists == null) return Results.NotFound();
 
     if (!MiniValidator.TryValidate(supplier, out var errors))
@@ -182,7 +189,7 @@ app.MapPut("/supplier/{id}", async (
    .WithName("PutFornecedor")
    .WithTags("Fornecedor");
 
-app.MapDelete("/supplier/{id}", async (
+app.MapDelete("/supplier/{id}", [Authorize] async (
       Guid id,
       MinimalContextDb context) =>
 {
@@ -199,6 +206,7 @@ app.MapDelete("/supplier/{id}", async (
 }).Produces(StatusCodes.Status400BadRequest)
   .Produces(StatusCodes.Status204NoContent)
   .Produces(StatusCodes.Status404NotFound)
+  .RequireAuthorization("ExcluirFonecedor")
   .WithName("DeleteFornecedor")
   .WithTags("Fornecedor");
 
