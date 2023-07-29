@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
 using MinimalAPICore.Data;
 using MinimalAPICore.Models;
 using MiniValidation;
@@ -27,6 +28,42 @@ builder.Services.AddAuthorization(options =>
         ));
 });
 
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Minimal API Sample",
+        Description = "Developed by Eduardo Pires - Owner @ desenvolvedor.io",
+        Contact = new OpenApiContact { Name = "Eduardo Pires", Email = "contato@eduardopires.net.br" },
+        License = new OpenApiLicense { Name = "MIT", Url = new Uri("https://opensource.org/licenses/MIT") }
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Insira o token JWT desta maneira: Bearer {seu token}",
+        Name = "Authorization",
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
+
 builder.Services.AddIdentityConfiguration();
 builder.Services.AddJwtConfiguration(builder.Configuration, "AppSettings");
 
@@ -45,7 +82,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthConfiguration();
 app.UseHttpsRedirection();
 
-
+#region configureJWT
 
 app.MapPost("/register", [AllowAnonymous] async (
       SignInManager<IdentityUser> signInManager,
@@ -125,6 +162,9 @@ app.MapPost("/login", [AllowAnonymous] async (
   .WithName("LoginUsuario")
   .WithTags("Usuario");
 
+#endregion
+
+#region supplierController
 app.MapGet("/supplier", [AllowAnonymous] async (
     MinimalContextDb context) =>
     await context.Suppliers.ToListAsync()
@@ -209,7 +249,7 @@ app.MapDelete("/supplier/{id}", [Authorize] async (
   .RequireAuthorization("ExcluirFonecedor")
   .WithName("DeleteFornecedor")
   .WithTags("Fornecedor");
-
+#endregion
 
 app.Run();
 
